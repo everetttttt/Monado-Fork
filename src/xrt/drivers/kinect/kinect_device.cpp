@@ -36,6 +36,7 @@
 
 #include "nite/NiTE.h"
 
+#include <NiteCEnums.h>
 #include <NiteEnums.h>
 #include <OniEnums.h>
 #include <OpenNI.h>
@@ -277,13 +278,13 @@ kinect_tracking(struct kinect *dev){
 					// Get tare position by taking the neck position and putting it 0.02m below the head.
 					xrt_space_relation head;
 					dev->hmd->get_tracked_pose(dev->hmd, XRT_INPUT_GENERIC_HEAD_POSE, os_monotonic_get_ns(), &head);
-					xrt_vec3 neck_position = xrt_vec3(skeleton.getJoint(nite::JointType(NITE_JOINT_NECK)).getPosition().x / -500.0f,
-													skeleton.getJoint(nite::JointType(NITE_JOINT_NECK)).getPosition().y / 500.0f,
-													skeleton.getJoint(nite::JointType(NITE_JOINT_NECK)).getPosition().z / -1000.0f);
+					xrt_vec3 head_position = xrt_vec3(skeleton.getJoint(nite::JointType(NITE_JOINT_HEAD)).getPosition().x / -500.0f,
+													skeleton.getJoint(nite::JointType(NITE_JOINT_HEAD)).getPosition().y / 500.0f,
+													skeleton.getJoint(nite::JointType(NITE_JOINT_HEAD)).getPosition().z / -1000.0f);
 
-					xrt_vec3 tare_offset = xrt_vec3(head.pose.position.x - neck_position.x, // Left/right
-													head.pose.position.y - neck_position.y - 0.02f, // Y is up
-													head.pose.position.z - neck_position.z); // Forwards/backward
+					xrt_vec3 tare_offset = xrt_vec3(head.pose.position.x - head_position.x, // Left/right
+													head.pose.position.y - head_position.y, // Y is up
+													head.pose.position.z - head_position.z); // Forwards/backward
 					// xrt_vec3 tare_offset = xrt_vec3(neck_position.x - head.pose.position.x, // Left/right
 					// 								neck_position.y - head.pose.position.y, // Y is up
 					// 								neck_position.z - head.pose.position.z); // Forwards/backward
@@ -301,10 +302,11 @@ kinect_tracking(struct kinect *dev){
 													skeleton.getJoint(nite::JointType(TRACKER_ROLES[i])).getPosition().y / 500.0f,
 													skeleton.getJoint(nite::JointType(TRACKER_ROLES[i])).getPosition().z / -1000.0f), tare_offset);
 
-						new_pose.orientation = xrt_quat(skeleton.getJoint(nite::JointType(TRACKER_ROLES[i])).getOrientation().w,
-													skeleton.getJoint(nite::JointType(TRACKER_ROLES[i])).getOrientation().x,
-													skeleton.getJoint(nite::JointType(TRACKER_ROLES[i])).getOrientation().y,
-													skeleton.getJoint(nite::JointType(TRACKER_ROLES[i])).getOrientation().z);
+						// new_pose.orientation = xrt_quat(skeleton.getJoint(nite::JointType(TRACKER_ROLES[i])).getOrientation().w,
+						// 							skeleton.getJoint(nite::JointType(TRACKER_ROLES[i])).getOrientation().x,
+						// 							skeleton.getJoint(nite::JointType(TRACKER_ROLES[i])).getOrientation().y,
+						// 							skeleton.getJoint(nite::JointType(TRACKER_ROLES[i])).getOrientation().z);
+						new_pose.orientation = XRT_QUAT_IDENTITY;
 						
 						// new_pose.orientation = xrt_quat(user.skeleton.joints[idx].orientation.x, user.skeleton.joints[idx].orientation.y, user.skeleton.joints[idx].orientation.z, user.skeleton.joints[idx].orientation.w);
 						
@@ -322,9 +324,9 @@ kinect_tracking(struct kinect *dev){
 						rel.pose = new_pose;
 
 						rel.relation_flags = (xrt_space_relation_flags)(
-							XRT_SPACE_RELATION_ORIENTATION_VALID_BIT | XRT_SPACE_RELATION_POSITION_VALID_BIT |
-							XRT_SPACE_RELATION_ORIENTATION_TRACKED_BIT | XRT_SPACE_RELATION_POSITION_TRACKED_BIT |
-							XRT_SPACE_RELATION_LINEAR_VELOCITY_VALID_BIT | XRT_SPACE_RELATION_ANGULAR_VELOCITY_VALID_BIT
+							XRT_SPACE_RELATION_POSITION_VALID_BIT |
+							XRT_SPACE_RELATION_POSITION_TRACKED_BIT |
+							XRT_SPACE_RELATION_LINEAR_VELOCITY_VALID_BIT 
 						);
 
 						dev->tracking_mutex.lock();
@@ -444,8 +446,6 @@ kinect_device_create_xdevs(struct xrt_device *const hmd, struct xrt_device **con
 	// kt->user_tracker_handle = NULL;
 	// NiteStatus init_user_tracker_result = niteInitializeUserTracker(kt->user_tracker_handle);
 
-	auto prev_path = std::filesystem::current_path();
-	U_LOG_D("Current path: %s\n", prev_path.c_str());
 	std::filesystem::current_path(std::filesystem::path(std::getenv("NITE2_PATH")).parent_path());
 
 	nite::NiTE::initialize();
@@ -457,6 +457,8 @@ kinect_device_create_xdevs(struct xrt_device *const hmd, struct xrt_device **con
 		U_LOG_E("niteInitializeUserTracker Fail! Code: %d", init_user_tracker_result);
 		return 0;
 	}
+
+	strncpy(kt->base.serial, kt->oni_device->getDeviceInfo().getUri(), sizeof(kt->base.serial) - 1);
 	
 	kt->timestamp = os_monotonic_get_ns();
 
@@ -469,6 +471,9 @@ kinect_device_create_xdevs(struct xrt_device *const hmd, struct xrt_device **con
 		joint->timestamp = os_monotonic_get_ns();
 		joint->base.name = XRT_DEVICE_VIVE_TRACKER;
 		joint->base.device_type = XRT_DEVICE_TYPE_GENERIC_TRACKER;
+		// "Tracker" needs to be in an xdev's name for OpenComposite to pick it up
+		snprintf(joint->base.str, sizeof(joint->base.str) - 1, "Kinect Tracker %d", i);
+		snprintf(joint->base.serial, sizeof(joint->base.serial) - 1, "%d", i);
 		joint->base.tracking_origin = hmd->tracking_origin;
 		joint->base.orientation_tracking_supported = true;
 		joint->base.position_tracking_supported = true;
@@ -478,19 +483,6 @@ kinect_device_create_xdevs(struct xrt_device *const hmd, struct xrt_device **con
 		joint->base.inputs[0].name = XRT_INPUT_GENERIC_TRACKER_POSE;
 		m_relation_history_create(&joint->history);
 		kt->joints[i] = joint;
-		// kt->joints[i]->role = TRACKER_ROLES[i];
-		// kt->joints[i]->parent = kt;
-		// kt->joints[i]->timestamp = os_monotonic_get_ns();
-		// kt->joints[i]->base.name = XRT_DEVICE_VIVE_TRACKER;
-		// kt->joints[i]->base.device_type = XRT_DEVICE_TYPE_GENERIC_TRACKER;
-		// kt->joints[i]->base.tracking_origin = hmd->tracking_origin;
-		// kt->joints[i]->base.orientation_tracking_supported = true;
-		// kt->joints[i]->base.position_tracking_supported = true;
-		// kt->joints[i]->base.update_inputs = u_device_noop_update_inputs;
-		// kt->joints[i]->base.get_tracked_pose = kinect_joint_get_tracked_pose;
-		// kt->joints[i]->base.destroy = kinect_joint_destroy;
-		// kt->joints[i]->base.inputs[0].name = XRT_INPUT_GENERIC_TRACKER_POSE;
-		// m_relation_history_create(&kt->joints[i]->history);
 	}
 
 	uint32_t tracker_count = 0;
