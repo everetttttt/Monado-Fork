@@ -56,6 +56,10 @@ DEBUG_GET_ONCE_LOG_OPTION(svr_log, "STEAMVR_LH_LOG", U_LOGGING_INFO)
 	} while (false);
 #define SVR_ASSERT_(predicate) SVR_ASSERT(predicate, "Assertion failed " #predicate)
 
+#if defined(XRT_BUILD_DRIVER_KINECT)
+	#include "kinect/kinect_device.h"
+	#define XRT_FEATURE_OPENXR_BODY_TRACKING_FULL_BODY_META
+#endif
 
 /*
  *
@@ -153,6 +157,15 @@ steamvr_open_system(struct xrt_builder *xb,
 	svrb->right_ht = u_system_devices_get_ht_device_right(xsysd);
 	xsysd->static_roles.hand_tracking.right = svrb->right_ht;
 
+#if defined(XRT_BUILD_DRIVER_KINECT)
+	const uint32_t count = kinect_device_create_xdevs(xsysd->static_roles.head, &xsysd->xdevs[xsysd->xdev_count], ARRAY_SIZE(xsysd->xdevs) - xsysd->xdev_count);
+
+	if (count != 0) {
+		xsysd->static_roles.body = xsysd->xdevs[xsysd->xdev_count];
+	}
+
+	xsysd->xdev_count += count;
+#endif
 	/*
 	 * Space overseer.
 	 */
