@@ -14,6 +14,7 @@
 
 #include "kinect_device.h"
 
+#include "math/m_filter_one_euro.h"
 #include "math/m_vec3.h"
 #include "os/os_time.h"
 #include "xrt/xrt_compiler.h"
@@ -40,6 +41,7 @@
 #include <NiteEnums.h>
 #include <OniEnums.h>
 #include <OpenNI.h>
+#include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -70,6 +72,8 @@ struct Joint {
 	struct kinect *parent;
 
 	uint64_t timestamp;
+
+	m_filter_euro_vec3 pos_filter;
 };
 
 
@@ -248,7 +252,7 @@ kinect_joint_get_tracked_pose(struct xrt_device *xdev,
 	struct Joint *dev = ((struct Joint*)xdev);
 	
 	dev->parent->tracking_mutex.lock();
-	m_relation_history_get(dev->history, at_timestamp_ns, out_relation);
+	m_relation_history_get(dev->history, dev->timestamp, out_relation);
 	dev->parent->tracking_mutex.unlock();
 }
 
@@ -264,12 +268,13 @@ kinect_joint_destroy(struct xrt_device *xdev)
 
 void 
 kinect_tracking(struct kinect *dev){
+	nite::UserTrackerFrameRef *frame = new nite::UserTrackerFrameRef();
 	while (true) {
-		nite::UserTrackerFrameRef *frame = new nite::UserTrackerFrameRef();
 		dev->user_tracker->readFrame(frame);
 
 		if (frame != NULL) {
 			if (frame->getUsers().getSize() > 0) {
+
 				nite::UserData user = frame->getUsers()[0];
 
 				nite::Skeleton skeleton = user.getSkeleton();
@@ -298,9 +303,13 @@ kinect_tracking(struct kinect *dev){
 
 						int idx = TRACKER_ROLES[i];
 						xrt_pose new_pose;
-						new_pose.position = m_vec3_add(xrt_vec3(skeleton.getJoint(nite::JointType(TRACKER_ROLES[i])).getPosition().x / -500.0f,
-													skeleton.getJoint(nite::JointType(TRACKER_ROLES[i])).getPosition().y / 500.0f,
-													skeleton.getJoint(nite::JointType(TRACKER_ROLES[i])).getPosition().z / -1000.0f), tare_offset);
+						auto this_joint = skeleton.getJoint(nite::JointType(idx));
+						auto this_joint_position = this_joint.getPosition();
+						new_pose.position = m_vec3_add(
+													xrt_vec3(this_joint_position.x / -500.0f,
+													this_joint_position.y / 500.0f,
+													this_joint_position.z / -1000.0f), 
+													tare_offset);
 
 						// new_pose.orientation = xrt_quat(skeleton.getJoint(nite::JointType(TRACKER_ROLES[i])).getOrientation().w,
 						// 							skeleton.getJoint(nite::JointType(TRACKER_ROLES[i])).getOrientation().x,
@@ -316,25 +325,30 @@ kinect_tracking(struct kinect *dev){
 							fabsf((dev->joints[i]->pose.position.z - new_pose.position.z) / (dev->joints[i]->timestamp - timestamp))
 						};
 
-						xrt_vec3 angular_velocity = XRT_VEC3_ZERO;
+						//xrt_vec3 angular_velocity = XRT_VEC3_ZERO;
 
-						math_quat_rotate_derivative(&new_pose.orientation, &angular_velocity, &rel.angular_velocity);
+						//math_quat_rotate_derivative(&new_pose.orientation, &angular_velocity, &rel.angular_velocity);
+
+						m_filter_euro_vec3_run(&dev->joints[i]->pos_filter, timestamp, &new_pose.position, &new_pose.position);
 
 						rel.linear_velocity = linear_velocity;
 						rel.pose = new_pose;
 
-						rel.relation_flags = (xrt_space_relation_flags)(
+						if (this_joint.getPositionConfidence() > POSITION_CONFIDENCE_THRESHOLD) {
+							rel.relation_flags = (xrt_space_relation_flags)(
 							XRT_SPACE_RELATION_POSITION_VALID_BIT |
 							XRT_SPACE_RELATION_POSITION_TRACKED_BIT |
 							XRT_SPACE_RELATION_LINEAR_VELOCITY_VALID_BIT 
-						);
+							);
 
-						dev->tracking_mutex.lock();
-						dev->joints[i]->pose = new_pose;
-						dev->joints[i]->timestamp = timestamp;
+							dev->tracking_mutex.lock();
+							dev->joints[i]->pose = new_pose;
+							dev->joints[i]->timestamp = timestamp;
 
-						m_relation_history_push(dev->joints[i]->history, &rel, timestamp);
-						dev->tracking_mutex.unlock();
+							m_relation_history_push(dev->joints[i]->history, &rel, timestamp);
+							dev->tracking_mutex.unlock();
+						}
+
 
 						//U_LOG_E("Joint %i: %f %f %f\n", i, new_pose.position.x, new_pose.position.y, new_pose.position.z);
 
@@ -482,6 +496,7 @@ kinect_device_create_xdevs(struct xrt_device *const hmd, struct xrt_device **con
 		joint->base.destroy = kinect_joint_destroy;
 		joint->base.inputs[0].name = XRT_INPUT_GENERIC_TRACKER_POSE;
 		m_relation_history_create(&joint->history);
+		m_filter_euro_vec3_init(&joint->pos_filter, M_PI, 1, 0.16f);
 		kt->joints[i] = joint;
 	}
 
