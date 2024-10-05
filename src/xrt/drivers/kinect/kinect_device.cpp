@@ -252,7 +252,7 @@ kinect_joint_get_tracked_pose(struct xrt_device *xdev,
 	struct Joint *dev = ((struct Joint*)xdev);
 	
 	dev->parent->tracking_mutex.lock();
-	m_relation_history_get(dev->history, dev->timestamp, out_relation);
+	m_relation_history_get(dev->history, at_timestamp_ns, out_relation);
 	dev->parent->tracking_mutex.unlock();
 }
 
@@ -283,8 +283,8 @@ kinect_tracking(struct kinect *dev){
 					// Get tare position by taking the neck position and putting it 0.02m below the head.
 					xrt_space_relation head;
 					dev->hmd->get_tracked_pose(dev->hmd, XRT_INPUT_GENERIC_HEAD_POSE, os_monotonic_get_ns(), &head);
-					xrt_vec3 head_position = xrt_vec3(skeleton.getJoint(nite::JointType(NITE_JOINT_HEAD)).getPosition().x / -500.0f,
-													skeleton.getJoint(nite::JointType(NITE_JOINT_HEAD)).getPosition().y / 500.0f,
+					xrt_vec3 head_position = xrt_vec3(skeleton.getJoint(nite::JointType(NITE_JOINT_HEAD)).getPosition().x / -1000.0f,
+													skeleton.getJoint(nite::JointType(NITE_JOINT_HEAD)).getPosition().y / 750.0f,
 													skeleton.getJoint(nite::JointType(NITE_JOINT_HEAD)).getPosition().z / -1000.0f);
 
 					xrt_vec3 tare_offset = xrt_vec3(head.pose.position.x - head_position.x, // Left/right
@@ -306,8 +306,8 @@ kinect_tracking(struct kinect *dev){
 						auto this_joint = skeleton.getJoint(nite::JointType(idx));
 						auto this_joint_position = this_joint.getPosition();
 						new_pose.position = m_vec3_add(
-													xrt_vec3(this_joint_position.x / -500.0f,
-													this_joint_position.y / 500.0f,
+													xrt_vec3(this_joint_position.x / -1000.0f,
+													this_joint_position.y / 750.0f,
 													this_joint_position.z / -1000.0f), 
 													tare_offset);
 
