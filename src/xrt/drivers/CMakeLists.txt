@@ -50,7 +50,7 @@ if(XRT_BUILD_DRIVER_DEPTHAI)
 endif()
 
 if(XRT_BUILD_DRIVER_KINECT)
-	add_library(drv_kinect STATIC kinect/kinect_device.h kinect/kinect_device.cpp kinect/kinect_interface.h kinect/kinect_prober.c)
+	add_library(drv_kinect STATIC kinect/kinect_device.h kinect/kinect_device.cpp)
 	target_link_libraries(drv_kinect PRIVATE xrt-interfaces aux_util aux_os aux_os_ble OpenNI2::OpenNI2 NiTE2::NiTE2)
 	target_include_directories(drv_kinect PRIVATE ${OpenNI2_INCLUDE_DIRS})
 	list(APPEND ENABLED_DRIVERS kinect)

@@ -2,13 +2,12 @@
 // SPDX-License-Identifier: BSL-1.0
 /*!
  * @file
- * @brief  Sample HMD device, use as a starting point to make your own device driver.
+ * @brief  Kinect Full Body Tracking
  *
  *
  * Based largely on simulated_hmd.c
  *
- * @author Jakob Bornecrantz <jakob@collabora.com>
- * @author Rylie Pavlik <rylie.pavlik@collabora.com>
+ * @author Pranay Sanghai
  * @ingroup drv_kinect
  */
 
@@ -51,8 +50,6 @@
 #include <thread>
 #include <time.h>
 #include <unistd.h>
-
-#define NiTE2_MODEL_PATH "~/.local/share/NiTE2"
 
 /*
  *
@@ -157,10 +154,6 @@ kinect_get_tracked_pose(struct xrt_device *xdev,
 	struct kinect *dev = (struct kinect *)xdev;
 	struct xrt_device *hmd = dev->hmd;
 
-	// Update positions of joints
-	// NiteUserTrackerFrame *frame = NULL;
-	// niteReadUserTrackerFrame(*dev->user_tracker_handle, &frame);
-
 	if (hmd != NULL) {
 	 	xrt_device_get_tracked_pose(hmd, name, at_timestamp_ns, out_relation);
 	} else {
@@ -211,11 +204,13 @@ kinect_update_inputs(struct xrt_device *xdev)
 // 		[NITE_JOINT_RIGHT_HAND] = XRT_BODY_JOINT_RIGHT_HAND_WRIST_FB,
 // 		//[NITE_JOINT_LEFT_HIP] = XRT_BODY_JOINT_
 // 		//[NITE_JOINT_RIGHT_HIP] = XRT_BODY_JOINT_
-// 		//[NITE_JOINT_LEFT_KNEE] = XRT_BODY_JOINT_LEFT_
-// 		//[NITE_JOINT_RIGHT_KNEE] = XRT_BODY_JOINT_RIGHT_
+// 		// [NITE_JOINT_LEFT_KNEE] = XRT_BODY_JOINT_LEFT_
+// 		// [NITE_JOINT_RIGHT_KNEE] = XRT_BODY_JOINT_RIGHT_
 // #ifdef XRT_FEATURE_OPENXR_BODY_TRACKING_FULL_BODY_META
 // 		[NITE_JOINT_LEFT_FOOT] = XRT_FULL_BODY_JOINT_LEFT_FOOT_TRANSVERSE_META
 // 		[NITE_JOINT_RIGHT_FOOT] = XRT_FULL_BODY_JOINT_RIGHT_FOOT_TRANSVERSE_META
+// 		[NITE_JOINT_LEFT_KNEE] = XRT_FULL_BODY_JOINT_LEFT_LOWER_LEG_META
+// 		[NITE_JOINT_RIGHT_KNEE] = XRT_FULL_BODY_JOINT_RIGHT_LOWER_LEG_META
 // #endif
 // 	};
 
@@ -231,7 +226,7 @@ kinect_update_inputs(struct xrt_device *xdev)
 // #ifdef XRT_FEATURE_OPENXR_BODY_TRACKING_FULL_BODY_META
 // 		case XRT_INPUT_META_FULL_BODY_TRACKING: {
 // 			joints = out_value->full_body_joint_set_meta.joint_locations;
-// 			joint_count = ARRAY_SIZE(out_value->full_body_joint_set_meta.joint_locations);
+// 			num_joints = ARRAY_SIZE(out_value->full_body_joint_set_meta.joint_locations);
 // 			break;
 // 		}
 // #endif
@@ -239,6 +234,10 @@ kinect_update_inputs(struct xrt_device *xdev)
 // 	}
 
 // 	struct kinect *const dev = (struct kinect *)xdev;
+
+// 	for (uint32_t i = 0; i < num_joints; i++) {
+		
+// 	}
 	
 
 // }
@@ -417,35 +416,6 @@ kinect_device_create_xdevs(struct xrt_device *const hmd, struct xrt_device **con
 		return 0;
 	}
 
-	// OniDeviceInfo *pdevs;
-	// int num_devices = 0;
-
-	// oniGetDeviceList(&pdevs, &num_devices);
-
-	// char *uri = NULL;
-
-	// for (int i = 0; i < num_devices; i++) {
-	// 	U_LOG_E("Found device: %s VendorID: %04x ProductID: %04x\n", pdevs[i].uri, pdevs[i].usbVendorId, pdevs[i].usbProductId);
-
-	// 	// if (pdevs[i].usbVendorId == 0x37b8 && pdevs[i].usbProductId == 0xdcd8) {
-	// 	// 	uri = pdevs[i].uri;
-	// 	// 	break;
-	// 	// }
-	// }
-
-	// uri = pdevs[0].uri;
-
-
-	// if (!uri) {
-	// 	U_LOG_E("No Kinect found!\n");
-	// 	return 0;
-	// }
-
-	// oniReleaseDeviceList(pdevs);
-
-	// kt->oni_device = NULL;
-	// OniStatus open_result = oniDeviceOpen(uri, kt->oni_device);
-
 	openni::OpenNI::initialize();
 
 	kt->oni_device = new openni::Device();
@@ -456,9 +426,6 @@ kinect_device_create_xdevs(struct xrt_device *const hmd, struct xrt_device **con
 		U_LOG_E("oniDeviceOpen Fail! Code: %d", open_result);
 		return 0;
 	}
-	
-	// kt->user_tracker_handle = NULL;
-	// NiteStatus init_user_tracker_result = niteInitializeUserTracker(kt->user_tracker_handle);
 
 	std::filesystem::current_path(std::filesystem::path(std::getenv("NITE2_PATH")).parent_path());
 
@@ -486,8 +453,8 @@ kinect_device_create_xdevs(struct xrt_device *const hmd, struct xrt_device **con
 		joint->base.name = XRT_DEVICE_VIVE_TRACKER;
 		joint->base.device_type = XRT_DEVICE_TYPE_GENERIC_TRACKER;
 		// "Tracker" needs to be in an xdev's name for OpenComposite to pick it up
-		snprintf(joint->base.str, sizeof(joint->base.str) - 1, "Kinect Tracker %d", i);
-		snprintf(joint->base.serial, sizeof(joint->base.serial) - 1, "%d", i);
+		snprintf(joint->base.str, sizeof(joint->base.str) - 1, "Kinect Tracker %d", TRACKER_ROLES[i]);
+		snprintf(joint->base.serial, sizeof(joint->base.serial) - 1, "%d", TRACKER_ROLES[i]);
 		joint->base.tracking_origin = hmd->tracking_origin;
 		joint->base.orientation_tracking_supported = true;
 		joint->base.position_tracking_supported = true;
@@ -496,7 +463,7 @@ kinect_device_create_xdevs(struct xrt_device *const hmd, struct xrt_device **con
 		joint->base.destroy = kinect_joint_destroy;
 		joint->base.inputs[0].name = XRT_INPUT_GENERIC_TRACKER_POSE;
 		m_relation_history_create(&joint->history);
-		m_filter_euro_vec3_init(&joint->pos_filter, M_PI, 1, 0.16f);
+		m_filter_euro_vec3_init(&joint->pos_filter, ONE_EURO_FC_MIN, ONE_EURO_FC_MIN_D, ONE_EURO_BETA);
 		kt->joints[i] = joint;
 	}
 
@@ -507,99 +474,4 @@ kinect_device_create_xdevs(struct xrt_device *const hmd, struct xrt_device **con
 	}
 
 	return tracker_count;
-
-	// kt->base.inputs[0].name = XRT_INPUT_GENERIC_TRACKER_POSE;
-
-	// // This list should be ordered, most preferred first.
-	// size_t idx = 0;
-	// kt->base.hmd->blend_modes[idx++] = XRT_BLEND_MODE_OPAQUE;
-	// kt->base.hmd->blend_mode_count = idx;
-
-	// kt->base.update_inputs = kinect_update_inputs;
-	// kt->base.get_tracked_pose = kinect_get_tracked_pose;
-	// kt->base.get_view_poses = kinect_get_view_poses;
-	// kt->base.get_visibility_mask = kinect_get_visibility_mask;
-	
-
-	// // Distortion information, fills in xdev->compute_distortion().
-	// u_distortion_mesh_set_none(&kt->base);
-
-	// // populate this with something more complex if required
-	// // hmd->base.compute_distortion = kinect_compute_distortion;
-
-	// kt->pose = (struct xrt_pose)XRT_POSE_IDENTITY;
-	// kt->log_level = debug_get_log_option_kinect_log();
-
-	// // Print name.
-	// snprintf(kt->base.str, XRT_DEVICE_NAME_LEN, "Sample HMD");
-	// snprintf(kt->base.serial, XRT_DEVICE_NAME_LEN, "Sample HMD S/N");
-
-	// m_relation_history_create(&kt->relation_hist);
-
-	// // Setup input.
-	// kt->base.name = XRT_DEVICE_GENERIC_HMD;
-	// kt->base.device_type = XRT_DEVICE_TYPE_HMD;
-	// kt->base.inputs[0].name = XRT_INPUT_GENERIC_HEAD_POSE;
-	// kt->base.orientation_tracking_supported = true;
-	// kt->base.position_tracking_supported = true;
-
-	// // Set up display details
-	// // refresh rate
-	// kt->base.hmd->screens[0].nominal_frame_interval_ns = time_s_to_ns(1.0f / 90.0f);
-
-	// const double hFOV = 90 * (M_PI / 180.0);
-	// const double vFOV = 96.73 * (M_PI / 180.0);
-	// // center of projection
-	// const double hCOP = 0.529;
-	// const double vCOP = 0.5;
-	// if (
-	//     /* right eye */
-	//     !math_compute_fovs(1, hCOP, hFOV, 1, vCOP, vFOV, &kt->base.hmd->distortion.fov[1]) ||
-	//     /*
-	//      * left eye - same as right eye, except the horizontal center of projection is moved in the opposite
-	//      * direction now
-	//      */
-	//     !math_compute_fovs(1, 1.0 - hCOP, hFOV, 1, vCOP, vFOV, &kt->base.hmd->distortion.fov[0])) {
-	// 	// If those failed, it means our math was impossible.
-	// 	HMD_ERROR(kt, "Failed to setup basic device info");
-	// 	kinect_destroy(&kt->base);
-	// 	return NULL;
-	// }
-	// const int panel_w = 1080;
-	// const int panel_h = 1200;
-
-	// // Single "screen" (always the case)
-	// kt->base.hmd->screens[0].w_pixels = panel_w * 2;
-	// kt->base.hmd->screens[0].h_pixels = panel_h;
-
-	// // Left, Right
-	// for (uint8_t eye = 0; eye < 2; ++eye) {
-	// 	kt->base.hmd->views[eye].display.w_pixels = panel_w;
-	// 	kt->base.hmd->views[eye].display.h_pixels = panel_h;
-	// 	kt->base.hmd->views[eye].viewport.y_pixels = 0;
-	// 	kt->base.hmd->views[eye].viewport.w_pixels = panel_w;
-	// 	kt->base.hmd->views[eye].viewport.h_pixels = panel_h;
-	// 	// if rotation is not identity, the dimensions can get more complex.
-	// 	kt->base.hmd->views[eye].rot = u_device_rotation_ident;
-	// }
-	// // left eye starts at x=0, right eye starts at x=panel_width
-	// kt->base.hmd->views[0].viewport.x_pixels = 0;
-	// kt->base.hmd->views[1].viewport.x_pixels = panel_w;
-
-	// // Distortion information, fills in xdev->compute_distortion().
-	// u_distortion_mesh_set_none(&kt->base);
-
-	// // Just put an initial identity value in the tracker
-	// struct xrt_space_relation identity = XRT_SPACE_RELATION_ZERO;
-	// identity.relation_flags = (enum xrt_space_relation_flags)(XRT_SPACE_RELATION_ORIENTATION_TRACKED_BIT |
-	//                                                           XRT_SPACE_RELATION_ORIENTATION_VALID_BIT);
-	// uint64_t now = os_monotonic_get_ns();
-	// m_relation_history_push(kt->relation_hist, &identity, now);
-
-	// // Setup variable tracker: Optional but useful for debugging
-	// u_var_add_root(kt, "Sample HMD", true);
-	// u_var_add_log_level(kt, &kt->log_level, "log_level");
-
-
-	// return &kt->base;
 }

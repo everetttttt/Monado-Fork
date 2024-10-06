@@ -99,11 +99,6 @@
 #endif
 #endif
 
-#ifdef XRT_BUILD_DRIVER_KINECT
-#include "kinect/kinect_interface.h"
-#endif
-
-
 /*!
  * Builders
  */
@@ -199,10 +194,6 @@ struct xrt_prober_entry target_entry_list[] = {
 #ifdef XRT_BUILD_DRIVER_HDK
     {HDK_VID, HDK_PID, hdk_found, "OSVR HDK", "osvr"},
 #endif // XRT_BUILD_DRIVER_HDK
-
-// #ifdef XRT_BUILD_DRIVER_KINECT
-//     {KINECT_VID, KINECT_PID, kinect_found, "Microsoft Kinect", "kinect"},
-// #endif
 
     {0x0000, 0x0000, NULL, NULL, NULL}, // Terminate
 };
