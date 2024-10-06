@@ -57,7 +57,8 @@
  *
  */
 
-struct Joint {
+struct Joint
+{
 	struct xrt_device base;
 
 	struct xrt_pose pose;
@@ -147,23 +148,21 @@ kinect_destroy(struct xrt_device *xdev)
 
 static void
 kinect_get_tracked_pose(struct xrt_device *xdev,
-                            enum xrt_input_name name,
-                            int64_t at_timestamp_ns,
-                            struct xrt_space_relation *out_relation)
+                        enum xrt_input_name name,
+                        int64_t at_timestamp_ns,
+                        struct xrt_space_relation *out_relation)
 {
 	struct kinect *dev = (struct kinect *)xdev;
 	struct xrt_device *hmd = dev->hmd;
 
 	if (hmd != NULL) {
-	 	xrt_device_get_tracked_pose(hmd, name, at_timestamp_ns, out_relation);
+		xrt_device_get_tracked_pose(hmd, name, at_timestamp_ns, out_relation);
 	} else {
 		*out_relation = XRT_SPACE_RELATION_ZERO;
 	}
-
-	
 }
 
-static xrt_result_t 
+static xrt_result_t
 kinect_update_inputs(struct xrt_device *xdev)
 {
 	struct kinect *const dev = (struct kinect *)xdev;
@@ -236,20 +235,20 @@ kinect_update_inputs(struct xrt_device *xdev)
 // 	struct kinect *const dev = (struct kinect *)xdev;
 
 // 	for (uint32_t i = 0; i < num_joints; i++) {
-		
+
 // 	}
-	
+
 
 // }
 
 static void
 kinect_joint_get_tracked_pose(struct xrt_device *xdev,
-							  enum xrt_input_name name,
-							  int64_t at_timestamp_ns,
-							  struct xrt_space_relation *out_relation)
+                              enum xrt_input_name name,
+                              int64_t at_timestamp_ns,
+                              struct xrt_space_relation *out_relation)
 {
-	struct Joint *dev = ((struct Joint*)xdev);
-	
+	struct Joint *dev = ((struct Joint *)xdev);
+
 	dev->parent->tracking_mutex.lock();
 	m_relation_history_get(dev->history, at_timestamp_ns, out_relation);
 	dev->parent->tracking_mutex.unlock();
@@ -258,15 +257,16 @@ kinect_joint_get_tracked_pose(struct xrt_device *xdev,
 static void
 kinect_joint_destroy(struct xrt_device *xdev)
 {
-	struct Joint *dev = ((struct Joint*)xdev);
+	struct Joint *dev = ((struct Joint *)xdev);
 
 	m_relation_history_destroy(&dev->history);
 
 	u_device_free(&dev->base);
 }
 
-void 
-kinect_tracking(struct kinect *dev){
+void
+kinect_tracking(struct kinect *dev)
+{
 	nite::UserTrackerFrameRef *frame = new nite::UserTrackerFrameRef();
 	while (true) {
 		dev->user_tracker->readFrame(frame);
@@ -279,21 +279,28 @@ kinect_tracking(struct kinect *dev){
 				nite::Skeleton skeleton = user.getSkeleton();
 
 				if (skeleton.getState() == nite::SKELETON_TRACKED) {
-					// Get tare position by taking the neck position and putting it 0.02m below the head.
+					// Get tare position by taking the neck position and putting it 0.02m below the
+					// head.
 					xrt_space_relation head;
-					dev->hmd->get_tracked_pose(dev->hmd, XRT_INPUT_GENERIC_HEAD_POSE, os_monotonic_get_ns(), &head);
-					xrt_vec3 head_position = xrt_vec3(skeleton.getJoint(nite::JointType(NITE_JOINT_HEAD)).getPosition().x / -1000.0f,
-													skeleton.getJoint(nite::JointType(NITE_JOINT_HEAD)).getPosition().y / 750.0f,
-													skeleton.getJoint(nite::JointType(NITE_JOINT_HEAD)).getPosition().z / -1000.0f);
+					dev->hmd->get_tracked_pose(dev->hmd, XRT_INPUT_GENERIC_HEAD_POSE,
+					                           os_monotonic_get_ns(), &head);
+					xrt_vec3 head_position = xrt_vec3(
+					    skeleton.getJoint(nite::JointType(NITE_JOINT_HEAD)).getPosition().x /
+					        -1000.0f,
+					    skeleton.getJoint(nite::JointType(NITE_JOINT_HEAD)).getPosition().y /
+					        750.0f,
+					    skeleton.getJoint(nite::JointType(NITE_JOINT_HEAD)).getPosition().z /
+					        -1000.0f);
 
-					xrt_vec3 tare_offset = xrt_vec3(head.pose.position.x - head_position.x, // Left/right
-													head.pose.position.y - head_position.y, // Y is up
-													head.pose.position.z - head_position.z); // Forwards/backward
-					// xrt_vec3 tare_offset = xrt_vec3(neck_position.x - head.pose.position.x, // Left/right
-					// 								neck_position.y - head.pose.position.y, // Y is up
-					// 								neck_position.z - head.pose.position.z); // Forwards/backward
-											
-					
+					xrt_vec3 tare_offset =
+					    xrt_vec3(head.pose.position.x - head_position.x,  // Left/right
+					             head.pose.position.y - head_position.y,  // Y is up
+					             head.pose.position.z - head_position.z); // Forwards/backward
+					// xrt_vec3 tare_offset = xrt_vec3(neck_position.x - head.pose.position.x, //
+					// Left/right 								neck_position.y - head.pose.position.y, // Y is up 								neck_position.z
+					// - head.pose.position.z); // Forwards/backward
+
+
 
 					for (uint32_t i = 0; i < NUMBER_OF_TRACKERS; i++) {
 						xrt_space_relation rel = {};
@@ -304,53 +311,63 @@ kinect_tracking(struct kinect *dev){
 						xrt_pose new_pose;
 						auto this_joint = skeleton.getJoint(nite::JointType(idx));
 						auto this_joint_position = this_joint.getPosition();
-						new_pose.position = m_vec3_add(
-													xrt_vec3(this_joint_position.x / -1000.0f,
-													this_joint_position.y / 750.0f,
-													this_joint_position.z / -1000.0f), 
-													tare_offset);
+						new_pose.position =
+						    m_vec3_add(xrt_vec3(this_joint_position.x / -1000.0f,
+						                        this_joint_position.y / 750.0f,
+						                        this_joint_position.z / -1000.0f),
+						               tare_offset);
 
-						// new_pose.orientation = xrt_quat(skeleton.getJoint(nite::JointType(TRACKER_ROLES[i])).getOrientation().w,
+						// new_pose.orientation =
+						// xrt_quat(skeleton.getJoint(nite::JointType(TRACKER_ROLES[i])).getOrientation().w,
 						// 							skeleton.getJoint(nite::JointType(TRACKER_ROLES[i])).getOrientation().x,
 						// 							skeleton.getJoint(nite::JointType(TRACKER_ROLES[i])).getOrientation().y,
 						// 							skeleton.getJoint(nite::JointType(TRACKER_ROLES[i])).getOrientation().z);
 						new_pose.orientation = XRT_QUAT_IDENTITY;
-						
-						// new_pose.orientation = xrt_quat(user.skeleton.joints[idx].orientation.x, user.skeleton.joints[idx].orientation.y, user.skeleton.joints[idx].orientation.z, user.skeleton.joints[idx].orientation.w);
-						
+
+						// new_pose.orientation =
+						// xrt_quat(user.skeleton.joints[idx].orientation.x,
+						// user.skeleton.joints[idx].orientation.y,
+						// user.skeleton.joints[idx].orientation.z,
+						// user.skeleton.joints[idx].orientation.w);
+
 						xrt_vec3 linear_velocity = {
-							fabsf((dev->joints[i]->pose.position.x - new_pose.position.x) / (dev->joints[i]->timestamp - timestamp)),
-							fabsf((dev->joints[i]->pose.position.y - new_pose.position.y) / (dev->joints[i]->timestamp - timestamp)),
-							fabsf((dev->joints[i]->pose.position.z - new_pose.position.z) / (dev->joints[i]->timestamp - timestamp))
-						};
+						    fabsf((dev->joints[i]->pose.position.x - new_pose.position.x) /
+						          (dev->joints[i]->timestamp - timestamp)),
+						    fabsf((dev->joints[i]->pose.position.y - new_pose.position.y) /
+						          (dev->joints[i]->timestamp - timestamp)),
+						    fabsf((dev->joints[i]->pose.position.z - new_pose.position.z) /
+						          (dev->joints[i]->timestamp - timestamp))};
 
-						//xrt_vec3 angular_velocity = XRT_VEC3_ZERO;
+						// xrt_vec3 angular_velocity = XRT_VEC3_ZERO;
 
-						//math_quat_rotate_derivative(&new_pose.orientation, &angular_velocity, &rel.angular_velocity);
+						// math_quat_rotate_derivative(&new_pose.orientation, &angular_velocity,
+						// &rel.angular_velocity);
 
-						m_filter_euro_vec3_run(&dev->joints[i]->pos_filter, timestamp, &new_pose.position, &new_pose.position);
+						m_filter_euro_vec3_run(&dev->joints[i]->pos_filter, timestamp,
+						                       &new_pose.position, &new_pose.position);
 
 						rel.linear_velocity = linear_velocity;
 						rel.pose = new_pose;
 
-						if (this_joint.getPositionConfidence() > POSITION_CONFIDENCE_THRESHOLD) {
-							rel.relation_flags = (xrt_space_relation_flags)(
-							XRT_SPACE_RELATION_POSITION_VALID_BIT |
-							XRT_SPACE_RELATION_POSITION_TRACKED_BIT |
-							XRT_SPACE_RELATION_LINEAR_VELOCITY_VALID_BIT 
-							);
+						if (this_joint.getPositionConfidence() >
+						    POSITION_CONFIDENCE_THRESHOLD) {
+							rel.relation_flags =
+							    (xrt_space_relation_flags)(XRT_SPACE_RELATION_POSITION_VALID_BIT |
+							                               XRT_SPACE_RELATION_POSITION_TRACKED_BIT |
+							                               XRT_SPACE_RELATION_LINEAR_VELOCITY_VALID_BIT);
 
 							dev->tracking_mutex.lock();
 							dev->joints[i]->pose = new_pose;
 							dev->joints[i]->timestamp = timestamp;
 
-							m_relation_history_push(dev->joints[i]->history, &rel, timestamp);
+							m_relation_history_push(dev->joints[i]->history, &rel,
+							                        timestamp);
 							dev->tracking_mutex.unlock();
 						}
 
 
-						//U_LOG_E("Joint %i: %f %f %f\n", i, new_pose.position.x, new_pose.position.y, new_pose.position.z);
-
+						// U_LOG_E("Joint %i: %f %f %f\n", i, new_pose.position.x,
+						// new_pose.position.y, new_pose.position.z);
 					}
 				} else {
 					if (user.isNew()) {
@@ -371,7 +388,7 @@ kinect_device_create(struct xrt_device *const hmd)
 	return result ? out : NULL;
 }
 
-uint32_t 
+uint32_t
 kinect_device_create_xdevs(struct xrt_device *const hmd, struct xrt_device **const out_xdevs, uint32_t out_xdevs_cap)
 {
 	if (out_xdevs_cap < 1) {
@@ -383,8 +400,7 @@ kinect_device_create_xdevs(struct xrt_device *const hmd, struct xrt_device **con
 	}
 
 	// This indicates you won't be using Monado's built-in tracking algorithms.
-	enum u_device_alloc_flags flags =
-	    (enum u_device_alloc_flags)(U_DEVICE_ALLOC_TRACKING_NONE);
+	enum u_device_alloc_flags flags = (enum u_device_alloc_flags)(U_DEVICE_ALLOC_TRACKING_NONE);
 
 #ifdef XRT_FEATURE_OPENXR_BODY_TRACKING_FULL_BODY_META
 	struct kinect *kt = U_DEVICE_ALLOCATE(struct kinect, flags, 2, 0);
@@ -440,13 +456,14 @@ kinect_device_create_xdevs(struct xrt_device *const hmd, struct xrt_device **con
 	}
 
 	strncpy(kt->base.serial, kt->oni_device->getDeviceInfo().getUri(), sizeof(kt->base.serial) - 1);
-	
+
 	kt->timestamp = os_monotonic_get_ns();
 
 	kt->tracking_thread = std::thread(kinect_tracking, kt);
 
 	for (int i = 0; i < NUMBER_OF_TRACKERS; i++) {
-		struct Joint *joint = U_DEVICE_ALLOCATE(struct Joint, (enum u_device_alloc_flags)(U_DEVICE_ALLOC_TRACKING_NONE), 1, 0);
+		struct Joint *joint =
+		    U_DEVICE_ALLOCATE(struct Joint, (enum u_device_alloc_flags)(U_DEVICE_ALLOC_TRACKING_NONE), 1, 0);
 		joint->role = TRACKER_ROLES[i];
 		joint->parent = kt;
 		joint->timestamp = os_monotonic_get_ns();

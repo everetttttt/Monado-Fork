@@ -34,6 +34,11 @@
 #include "xrt/xrt_space.h"
 #include "util/u_space_overseer.h"
 
+#if defined(XRT_BUILD_DRIVER_KINECT)
+	#include "kinect/kinect_device.h"
+	#define XRT_FEATURE_OPENXR_BODY_TRACKING_FULL_BODY_META
+#endif
+
 #ifndef XRT_BUILD_DRIVER_STEAMVR_LIGHTHOUSE
 #error "This builder requires the SteamVR Lighthouse driver"
 #endif
@@ -55,11 +60,6 @@ DEBUG_GET_ONCE_LOG_OPTION(svr_log, "STEAMVR_LH_LOG", U_LOGGING_INFO)
 		}                                                                                                      \
 	} while (false);
 #define SVR_ASSERT_(predicate) SVR_ASSERT(predicate, "Assertion failed " #predicate)
-
-#if defined(XRT_BUILD_DRIVER_KINECT)
-	#include "kinect/kinect_device.h"
-	#define XRT_FEATURE_OPENXR_BODY_TRACKING_FULL_BODY_META
-#endif
 
 /*
  *
