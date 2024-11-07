@@ -577,8 +577,7 @@ try {
 
 	if (compositorNeedsCopy) {
 		struct xrt_swapchain_create_info copy_xinfo = xinfo;
-		// These bits doesn't matter for D3D12, just set it to something.
-		copy_xinfo.bits = XRT_SWAPCHAIN_USAGE_SAMPLED;
+		copy_xinfo.bits = (xrt_swapchain_usage_bits)(XRT_SWAPCHAIN_USAGE_TRANSFER_DST|XRT_SWAPCHAIN_USAGE_SAMPLED);
 
 		if (fixWidth) {
 			vkinfo.width = copy_xinfo.width = nextPowerOfTwo(info->width);
