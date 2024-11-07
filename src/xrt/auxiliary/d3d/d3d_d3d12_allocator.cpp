@@ -104,16 +104,16 @@ convertCreateInfoToD3d12(const xrt_swapchain_create_info &xsci,
 	D3D12_RESOURCE_FLAGS resource_flags = d3d_convert_usage_bits_to_d3d12_resource_flags(xsci.bits);
 
 	D3D12_RESOURCE_DESC desc = {
-	    D3D12_RESOURCE_DIMENSION_TEXTURE2D, // Dimension
-	    0,                                  // Alignment
-	    xsci.width,                         // Width
-	    xsci.height,                        // Height
-	    (UINT16)xsci.array_size,            // DepthOrArraySize
-	    (UINT16)xsci.mip_count,             // MipLevels
-	    typeless_format,                    // Format
-	    sample_desc,                        // SampleDesc
-	    D3D12_TEXTURE_LAYOUT_UNKNOWN,       // Layout
-	    resource_flags                      // Flags;
+	    .Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D, 
+	    .Alignment = 0,                                  
+	    .Width = xsci.width,                         
+	    .Height = xsci.height,                        
+	    .DepthOrArraySize = (UINT16)xsci.array_size,            
+	    .MipLevels = (UINT16)xsci.mip_count,             
+	    .Format = typeless_format,                    
+	    .SampleDesc = sample_desc,                        
+	    .Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN,       
+	    .Flags = resource_flags                      
 	};
 
 	// Cubemap
