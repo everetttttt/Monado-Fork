@@ -103,8 +103,7 @@ convertCreateInfoToD3d12(const xrt_swapchain_create_info &xsci,
 	// Additionally, only copy operations are allowed with the resource.
 	D3D12_RESOURCE_FLAGS resource_flags = d3d_convert_usage_bits_to_d3d12_resource_flags(xsci.bits);
 
-	out_create_info.image_count = image_count;
-	out_create_info.desc = {
+	D3D12_RESOURCE_DESC desc = {
 	    D3D12_RESOURCE_DIMENSION_TEXTURE2D, // Dimension
 	    0,                                  // Alignment
 	    xsci.width,                         // Width
@@ -119,14 +118,18 @@ convertCreateInfoToD3d12(const xrt_swapchain_create_info &xsci,
 
 	// Cubemap
 	if (xsci.face_count == 6) {
-		out_create_info.desc.DepthOrArraySize *= 6;
+		desc.DepthOrArraySize *= 6;
 	}
 
 	// Create resources and let the driver manage memory
-	out_create_info.heap.Type = D3D12_HEAP_TYPE_DEFAULT;
-	out_create_info.heap_flags = D3D12_HEAP_FLAG_SHARED;
-	
-	out_create_info.initial_resource_state = d3d_convert_usage_bits_to_d3d12_app_resource_state(xsci.bits);
+	out_create_info = d3d12_swapchain_create_info{
+		.image_count = image_count,
+		.desc = desc,
+		.initial_resource_state = d3d_convert_usage_bits_to_d3d12_app_resource_state(xsci.bits),
+		.heap = {.Type = D3D12_HEAP_TYPE_DEFAULT},
+		.heap_flags = D3D12_HEAP_FLAG_SHARED,
+	};
+	return XRT_SUCCESS;
 }
 
 xrt_result_t
