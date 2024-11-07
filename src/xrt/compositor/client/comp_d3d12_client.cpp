@@ -603,6 +603,8 @@ try {
 			return xret;
 		}
 
+		D3D12_RESOURCE_STATES copyResourceState = d3d_convert_usage_bits_to_d3d12_app_resource_state(copy_xinfo.bits);
+
 		// Create copy command lists
 		for (uint32_t i = 0; i < image_count; ++i) {
 			wil::com_ptr<ID3D12CommandList> copyCommandList;
@@ -614,7 +616,7 @@ try {
 			    *(data->images[i]),                                              // resource_src
 			    *(data->comp_images[i]),                                         // resource_dst
 			    appResourceState,                                                // src_resource_state
-			    compositorResourceState,                                         // dst_resource_state
+			    copyResourceState,                                               // dst_resource_state
 			    copyCommandList);                                                // out_copy_command_list
 			if (!SUCCEEDED(hr)) {
 				char buf[kErrorBufSize];
