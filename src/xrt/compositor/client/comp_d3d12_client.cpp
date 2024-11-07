@@ -495,13 +495,22 @@ try {
 	sc->data = std::make_unique<client_d3d12_swapchain_data>(c->log_level);
 	auto &data = sc->data;
 
+	// Validate xrt_swapchain_create_info and convert to D3D12 terms
+	xrt::auxiliary::d3d::d3d12::d3d12_swapchain_create_info dinfo;
+	xret = xrt::auxiliary::d3d::d3d12::convertCreateInfoToD3d12( //
+	    xinfo,                                                   // xsci
+	    image_count,                                             // image_count
+	    dinfo);                                                  // out_create_info
+	if (xret != XRT_SUCCESS) {
+		return xret;
+	}
+
 	// Allocate images
 	xret = xrt::auxiliary::d3d::d3d12::allocateSharedImages( //
-	    *(c->device),                                        //
-	    xinfo,                                               //
-	    image_count,                                         //
-	    data->images,                                        //
-	    data->handles);                                      //
+	    *(c->device),                                        // device
+	    dinfo,                                               // dsci
+	    data->images,                                        // out_images
+	    data->handles);                                      // out_handles
 	if (xret != XRT_SUCCESS) {
 		return xret;
 	}
@@ -520,14 +529,11 @@ try {
 		data->app_images.emplace_back(std::move(image));
 	}
 
-	D3D12_RESOURCE_STATES appResourceState = d3d_convert_usage_bits_to_d3d12_app_resource_state(xinfo.bits);
+	data->appResourceState = dinfo.initial_resource_state;
 	/// @todo No idea if this is right, might depend on whether it's the compute or graphics compositor!
-	D3D12_RESOURCE_STATES compositorResourceState = D3D12_RESOURCE_STATE_COMMON;
+	data->compositorResourceState = D3D12_RESOURCE_STATE_COMMON;
 
-	data->appResourceState = appResourceState;
-	data->compositorResourceState = compositorResourceState;
-
-	data->state.resize(image_count, appResourceState);
+	data->state.resize(image_count, data->appResourceState);
 
 	if (debug_get_bool_option_barriers()) {
 		D3D_INFO(c, "Will use barriers at runtime");
@@ -544,7 +550,8 @@ try {
 			    *(c->device),                                            // device
 			    *(c->command_allocator),                                 // command_allocator
 			    *(data->images[i]),                                      // resource
-			    xinfo.bits,                                              // bits
+				data->compositorResourceState,                           // compositor_resource_state
+				data->appResourceState,                                  // app_resource_state
 			    commandsToApp,                                           // out_acquire_command_list
 			    commandsToCompositor);                                   // out_release_command_list
 			if (!SUCCEEDED(hr)) {
@@ -558,7 +565,6 @@ try {
 			data->commandsToCompositor.emplace_back(std::move(commandsToCompositor));
 		}
 	}
-
 
 	/*
 	 * There is a bug in nvidia systems where D3D12 and Vulkan disagree on the memory layout
@@ -591,18 +597,25 @@ try {
 		    (float)info->height / copy_xinfo.height,
 		};
 
-		// Allocate compositor images
-		xret = xrt::auxiliary::d3d::d3d12::allocateSharedImages( //
-		    *(c->device),                                        // device
-		    copy_xinfo,                                          // xsci
-		    image_count,                                         // image_count
-		    data->comp_images,                                   // out_images
-		    data->comp_handles);                                 // out_handles
+		// Validate modified xrt_swapchain_create_info and convert to D3D12 terms
+		xrt::auxiliary::d3d::d3d12::d3d12_swapchain_create_info comp_copy_dinfo;
+		xret = xrt::auxiliary::d3d::d3d12::convertCreateInfoToD3d12( //
+			copy_xinfo,                                              // xsci
+			image_count,                                             // image_count
+			comp_copy_dinfo);                                        // out_create_info
 		if (xret != XRT_SUCCESS) {
 			return xret;
 		}
 
-		D3D12_RESOURCE_STATES copyResourceState = d3d_convert_usage_bits_to_d3d12_app_resource_state(copy_xinfo.bits);
+		// Allocate compositor images
+		xret = xrt::auxiliary::d3d::d3d12::allocateSharedImages( //
+			*(c->device),                                        // device
+			comp_copy_dinfo,                                     // dsci
+			data->comp_images,                                   // out_images
+			data->comp_handles);                                 // out_handles
+		if (xret != XRT_SUCCESS) {
+			return xret;
+		}
 
 		// Create copy command lists
 		for (uint32_t i = 0; i < image_count; ++i) {
@@ -614,8 +627,8 @@ try {
 			    *(c->command_allocator),                                         // command_allocator
 			    *(data->images[i]),                                              // resource_src
 			    *(data->comp_images[i]),                                         // resource_dst
-			    appResourceState,                                                // src_resource_state
-			    copyResourceState,                                               // dst_resource_state
+			    dinfo.initial_resource_state,                                    // src_resource_state
+			    comp_copy_dinfo.initial_resource_state,                          // dst_resource_state
 			    copyCommandList);                                                // out_copy_command_list
 			if (!SUCCEEDED(hr)) {
 				char buf[kErrorBufSize];
@@ -642,7 +655,7 @@ try {
 		D3D12_RESOURCE_BARRIER barrier{};
 		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COMMON;
-		barrier.Transition.StateAfter = appResourceState;
+		barrier.Transition.StateAfter = data->appResourceState;
 		barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 
 		data->state.resize(image_count, barrier.Transition.StateAfter);
