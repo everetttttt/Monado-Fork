@@ -576,25 +576,26 @@ try {
 	bool compositorNeedsCopy = debug_get_bool_option_compositor_copy() && (fixWidth || fixHeight);
 
 	if (compositorNeedsCopy) {
+		struct xrt_swapchain_create_info copy_xinfo = xinfo;
 		// These bits doesn't matter for D3D12, just set it to something.
-		xinfo.bits = XRT_SWAPCHAIN_USAGE_SAMPLED;
+		copy_xinfo.bits = XRT_SWAPCHAIN_USAGE_SAMPLED;
 
 		if (fixWidth) {
-			vkinfo.width = xinfo.width = nextPowerOfTwo(info->width);
+			vkinfo.width = copy_xinfo.width = nextPowerOfTwo(info->width);
 		}
 		if (fixHeight) {
-			vkinfo.height = xinfo.height = nextPowerOfTwo(info->height);
+			vkinfo.height = copy_xinfo.height = nextPowerOfTwo(info->height);
 		}
 
 		sc->comp_uv_scale = xrt_vec2{
-		    (float)info->width / xinfo.width,
-		    (float)info->height / xinfo.height,
+		    (float)info->width / copy_xinfo.width,
+		    (float)info->height / copy_xinfo.height,
 		};
 
 		// Allocate compositor images
 		xret = xrt::auxiliary::d3d::d3d12::allocateSharedImages( //
 		    *(c->device),                                        // device
-		    xinfo,                                               // xsci
+		    copy_xinfo,                                          // xsci
 		    image_count,                                         // image_count
 		    data->comp_images,                                   // out_images
 		    data->comp_handles);                                 // out_handles
