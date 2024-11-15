@@ -209,4 +209,9 @@ typedef enum xrt_result
 	 * The internal output source is correctly formed but not supported
 	 */
 	XRT_ERROR_OUTPUT_UNSUPPORTED = -34,
+
+	/*!
+	 * The requested operation failed, verify the log to know more.
+	 */
+	XRT_ERROR_OPERATION_FAILED = -35,
 } xrt_result_t;
