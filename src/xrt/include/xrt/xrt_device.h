@@ -319,10 +319,10 @@ struct xrt_device
 	 *
 	 * @see xrt_input_name
 	 */
-	void (*get_tracked_pose)(struct xrt_device *xdev,
-	                         enum xrt_input_name name,
-	                         int64_t at_timestamp_ns,
-	                         struct xrt_space_relation *out_relation);
+	xrt_result_t (*get_tracked_pose)(struct xrt_device *xdev,
+	                                 enum xrt_input_name name,
+	                                 int64_t at_timestamp_ns,
+	                                 struct xrt_space_relation *out_relation);
 
 	/*!
 	 * @brief Get relationship of hand joints to the tracking origin space as
@@ -574,13 +574,13 @@ xrt_device_update_inputs(struct xrt_device *xdev)
  *
  * @public @memberof xrt_device
  */
-static inline void
+static inline xrt_result_t
 xrt_device_get_tracked_pose(struct xrt_device *xdev,
                             enum xrt_input_name name,
                             int64_t at_timestamp_ns,
                             struct xrt_space_relation *out_relation)
 {
-	xdev->get_tracked_pose(xdev, name, at_timestamp_ns, out_relation);
+	return xdev->get_tracked_pose(xdev, name, at_timestamp_ns, out_relation);
 }
 
 /*!
@@ -628,9 +628,6 @@ xrt_device_get_body_skeleton(struct xrt_device *xdev,
                              enum xrt_input_name body_tracking_type,
                              struct xrt_body_skeleton *out_value)
 {
-	if (xdev->get_body_skeleton == NULL) {
-		return XRT_ERROR_NOT_IMPLEMENTED;
-	}
 	return xdev->get_body_skeleton(xdev, body_tracking_type, out_value);
 }
 
@@ -647,9 +644,6 @@ xrt_device_get_body_joints(struct xrt_device *xdev,
                            int64_t desired_timestamp_ns,
                            struct xrt_body_joint_set *out_value)
 {
-	if (xdev->get_body_joints == NULL) {
-		return XRT_ERROR_NOT_IMPLEMENTED;
-	}
 	return xdev->get_body_joints(xdev, body_tracking_type, desired_timestamp_ns, out_value);
 }
 
@@ -712,9 +706,6 @@ xrt_device_get_visibility_mask(struct xrt_device *xdev,
                                uint32_t view_index,
                                struct xrt_visibility_mask **out_mask)
 {
-	if (xdev->get_visibility_mask == NULL) {
-		return XRT_ERROR_NOT_IMPLEMENTED;
-	}
 	return xdev->get_visibility_mask(xdev, type, view_index, out_mask);
 }
 
@@ -757,9 +748,6 @@ xrt_device_is_form_factor_available(struct xrt_device *xdev, enum xrt_form_facto
 static inline xrt_result_t
 xrt_device_get_battery_status(struct xrt_device *xdev, bool *out_present, bool *out_charging, float *out_charge)
 {
-	if (xdev->get_battery_status == NULL) {
-		return XRT_ERROR_NOT_IMPLEMENTED;
-	}
 	return xdev->get_battery_status(xdev, out_present, out_charging, out_charge);
 }
 
@@ -773,9 +761,6 @@ xrt_device_get_battery_status(struct xrt_device *xdev, bool *out_present, bool *
 static inline xrt_result_t
 xrt_device_begin_feature(struct xrt_device *xdev, enum xrt_device_feature_type type)
 {
-	if (xdev->begin_feature == NULL) {
-		return XRT_ERROR_NOT_IMPLEMENTED;
-	}
 	return xdev->begin_feature(xdev, type);
 }
 
@@ -789,9 +774,6 @@ xrt_device_begin_feature(struct xrt_device *xdev, enum xrt_device_feature_type t
 static inline xrt_result_t
 xrt_device_end_feature(struct xrt_device *xdev, enum xrt_device_feature_type type)
 {
-	if (xdev->end_feature == NULL) {
-		return XRT_ERROR_NOT_IMPLEMENTED;
-	}
 	return xdev->end_feature(xdev, type);
 }
 
