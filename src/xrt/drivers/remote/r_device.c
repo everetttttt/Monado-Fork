@@ -97,7 +97,7 @@ r_device_update_inputs(struct xrt_device *xdev)
 	return XRT_SUCCESS;
 }
 
-static void
+static xrt_result_t
 r_device_get_tracked_pose(struct xrt_device *xdev,
                           enum xrt_input_name name,
                           int64_t at_timestamp_ns,
@@ -108,8 +108,8 @@ r_device_get_tracked_pose(struct xrt_device *xdev,
 
 	if (name != XRT_INPUT_INDEX_AIM_POSE && name != XRT_INPUT_INDEX_GRIP_POSE &&
 	    name != XRT_INPUT_GENERIC_PALM_POSE) {
-		U_LOG_E("Unknown input name: 0x%0x", name);
-		return;
+		U_LOG_XDEV_UNSUPPORTED_INPUT(&rd->base, u_log_get_global_level(), name);
+		return XRT_ERROR_INPUT_UNSUPPORTED;
 	}
 
 	struct r_remote_controller_data *latest = rd->is_left ? &r->latest.left : &r->latest.right;
@@ -133,9 +133,11 @@ r_device_get_tracked_pose(struct xrt_device *xdev,
 	} else {
 		out_relation->relation_flags = 0;
 	}
+
+	return XRT_SUCCESS;
 }
 
-static void
+static xrt_result_t
 r_device_get_hand_tracking(struct xrt_device *xdev,
                            enum xrt_input_name name,
                            int64_t requested_timestamp_ns,
@@ -145,10 +147,9 @@ r_device_get_hand_tracking(struct xrt_device *xdev,
 	struct r_device *rd = r_device(xdev);
 	struct r_hub *r = rd->r;
 
-
 	if (name != XRT_INPUT_GENERIC_HAND_TRACKING_LEFT && name != XRT_INPUT_GENERIC_HAND_TRACKING_RIGHT) {
-		U_LOG_E("Unknown input name for hand tracker: 0x%0x", name);
-		return;
+		U_LOG_XDEV_UNSUPPORTED_INPUT(&rd->base, u_log_get_global_level(), name);
+		return XRT_ERROR_INPUT_UNSUPPORTED;
 	}
 
 	struct r_remote_controller_data *latest = rd->is_left ? &r->latest.left : &r->latest.right;
@@ -163,7 +164,11 @@ r_device_get_hand_tracking(struct xrt_device *xdev,
 
 	// Get the pose of the hand.
 	struct xrt_space_relation relation;
-	xrt_device_get_tracked_pose(xdev, XRT_INPUT_INDEX_GRIP_POSE, requested_timestamp_ns, &relation);
+	xrt_result_t ret =
+	    xrt_device_get_tracked_pose(xdev, XRT_INPUT_INDEX_GRIP_POSE, requested_timestamp_ns, &relation);
+	if (ret != XRT_SUCCESS) {
+		return ret;
+	}
 
 	// Simulate the hand.
 	enum xrt_hand hand = rd->is_left ? XRT_HAND_LEFT : XRT_HAND_RIGHT;
@@ -173,6 +178,7 @@ r_device_get_hand_tracking(struct xrt_device *xdev,
 
 	// This is a lie
 	*out_timestamp_ns = requested_timestamp_ns;
+	return XRT_SUCCESS;
 }
 
 static void
@@ -185,13 +191,6 @@ r_device_get_view_poses(struct xrt_device *xdev,
                         struct xrt_pose *out_poses)
 {
 	assert(false);
-}
-
-static void
-r_device_set_output(struct xrt_device *xdev, enum xrt_output_name name, const union xrt_output_value *value)
-{
-	struct r_device *rd = r_device(xdev);
-	(void)rd;
 }
 
 /*!
@@ -212,7 +211,7 @@ r_device_create(struct r_hub *r, bool is_left)
 	rd->base.get_tracked_pose = r_device_get_tracked_pose;
 	rd->base.get_hand_tracking = r_device_get_hand_tracking;
 	rd->base.get_view_poses = r_device_get_view_poses;
-	rd->base.set_output = r_device_set_output;
+	rd->base.set_output = u_device_ni_set_output;
 	rd->base.destroy = r_device_destroy;
 	rd->base.tracking_origin = &r->origin;
 	rd->base.orientation_tracking_supported = true;

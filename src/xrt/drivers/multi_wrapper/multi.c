@@ -79,7 +79,7 @@ attached_override(struct multi_device *d,
 	m_relation_chain_resolve(&xrc, out_relation);
 }
 
-static void
+static xrt_result_t
 get_tracked_pose(struct xrt_device *xdev,
                  enum xrt_input_name name,
                  int64_t at_timestamp_ns,
@@ -91,7 +91,11 @@ get_tracked_pose(struct xrt_device *xdev,
 
 	struct xrt_space_relation tracker_relation;
 
-	xrt_device_get_tracked_pose(tracker, tracker_input_name, at_timestamp_ns, &tracker_relation);
+	xrt_result_t xret =
+	    xrt_device_get_tracked_pose(tracker, tracker_input_name, at_timestamp_ns, &tracker_relation);
+	if (xret != XRT_SUCCESS) {
+		return xret;
+	}
 
 	switch (d->override_type) {
 	case XRT_TRACKING_OVERRIDE_DIRECT: {
@@ -101,8 +105,10 @@ get_tracked_pose(struct xrt_device *xdev,
 		struct xrt_device *target = d->tracking_override.target;
 
 		struct xrt_space_relation target_relation;
-		xrt_device_get_tracked_pose(target, name, at_timestamp_ns, &target_relation);
-
+		xret = xrt_device_get_tracked_pose(target, name, at_timestamp_ns, &target_relation);
+		if (xret != XRT_SUCCESS) {
+			break;
+		}
 
 		// just use the origin of the tracker space as reference frame
 		struct xrt_space_relation in_target_space;
@@ -116,6 +122,8 @@ get_tracked_pose(struct xrt_device *xdev,
 		                  &in_target_space, out_relation);
 	} break;
 	}
+
+	return xret;
 }
 
 static void
@@ -131,7 +139,7 @@ destroy(struct xrt_device *xdev)
 	free(d);
 }
 
-static void
+static xrt_result_t
 get_hand_tracking(struct xrt_device *xdev,
                   enum xrt_input_name name,
                   int64_t at_timestamp_ns,
@@ -140,15 +148,22 @@ get_hand_tracking(struct xrt_device *xdev,
 {
 	struct multi_device *d = (struct multi_device *)xdev;
 	struct xrt_device *target = d->tracking_override.target;
-	xrt_device_get_hand_tracking(target, name, at_timestamp_ns, out_value, out_timestamp_ns);
+	xrt_result_t ret = xrt_device_get_hand_tracking(target, name, at_timestamp_ns, out_value, out_timestamp_ns);
+	if (ret != XRT_SUCCESS) {
+		return ret;
+	}
+
 	if (!out_value->is_active) {
-		return;
+		return XRT_SUCCESS;
 	}
 
 	struct xrt_device *tracker = d->tracking_override.tracker;
 	struct xrt_space_relation tracker_relation;
-	xrt_device_get_tracked_pose(tracker, d->tracking_override.input_name, *out_timestamp_ns, &tracker_relation);
-
+	ret =
+	    xrt_device_get_tracked_pose(tracker, d->tracking_override.input_name, *out_timestamp_ns, &tracker_relation);
+	if (ret != XRT_SUCCESS) {
+		return ret;
+	}
 
 	switch (d->override_type) {
 	case XRT_TRACKING_OVERRIDE_DIRECT: direct_override(d, &tracker_relation, &out_value->hand_pose); break;
@@ -170,14 +185,16 @@ get_hand_tracking(struct xrt_device *xdev,
 		                  &in_target_space, &out_value->hand_pose);
 	} break;
 	}
+
+	return XRT_SUCCESS;
 }
 
-static void
+static xrt_result_t
 set_output(struct xrt_device *xdev, enum xrt_output_name name, const union xrt_output_value *value)
 {
 	struct multi_device *d = (struct multi_device *)xdev;
 	struct xrt_device *target = d->tracking_override.target;
-	xrt_device_set_output(target, name, value);
+	return xrt_device_set_output(target, name, value);
 }
 
 static void

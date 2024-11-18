@@ -86,7 +86,7 @@ opengloves_device(struct xrt_device *xdev)
 	return (struct opengloves_device *)xdev;
 }
 
-static void
+static xrt_result_t
 opengloves_device_get_hand_tracking(struct xrt_device *xdev,
                                     enum xrt_input_name name,
                                     int64_t requested_timestamp_ns,
@@ -134,6 +134,8 @@ opengloves_device_get_hand_tracking(struct xrt_device *xdev,
 
 	*out_timestamp_ns = requested_timestamp_ns;
 	out_joint_set->is_active = true;
+
+	return XRT_SUCCESS;
 }
 
 static xrt_result_t
@@ -172,7 +174,7 @@ opengloves_ffb_location_convert(const struct xrt_output_force_feedback *xrt_ffb,
 	}
 }
 
-static void
+static xrt_result_t
 opengloves_device_set_output(struct xrt_device *xdev, enum xrt_output_name name, const union xrt_output_value *value)
 {
 	struct opengloves_device *od = opengloves_device(xdev);
@@ -193,8 +195,12 @@ opengloves_device_set_output(struct xrt_device *xdev, enum xrt_output_name name,
 		opengloves_alpha_encoding_encode(&out, buff);
 
 		opengloves_communication_device_write(od->ocd, buff, strlen(buff));
+		return XRT_SUCCESS;
 	}
-	default: break;
+	default:
+		U_LOG_XDEV_UNSUPPORTED_OUTPUT(&od->base, od->log_level, name);
+		return XRT_ERROR_OUTPUT_UNSUPPORTED;
+		break;
 	}
 }
 

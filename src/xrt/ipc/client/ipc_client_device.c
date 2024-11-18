@@ -82,7 +82,7 @@ ipc_client_device_update_inputs(struct xrt_device *xdev)
 	IPC_CHK_ALWAYS_RET(icd->ipc_c, xret, "ipc_call_device_update_input");
 }
 
-static void
+static xrt_result_t
 ipc_client_device_get_tracked_pose(struct xrt_device *xdev,
                                    enum xrt_input_name name,
                                    int64_t at_timestamp_ns,
@@ -96,10 +96,10 @@ ipc_client_device_get_tracked_pose(struct xrt_device *xdev,
 	    name,                                             //
 	    at_timestamp_ns,                                  //
 	    out_relation);                                    //
-	IPC_CHK_ONLY_PRINT(icd->ipc_c, xret, "ipc_call_device_get_tracked_pose");
+	IPC_CHK_ALWAYS_RET(icd->ipc_c, xret, "ipc_call_device_get_tracked_pose");
 }
 
-static void
+static xrt_result_t
 ipc_client_device_get_hand_tracking(struct xrt_device *xdev,
                                     enum xrt_input_name name,
                                     int64_t at_timestamp_ns,
@@ -115,7 +115,7 @@ ipc_client_device_get_hand_tracking(struct xrt_device *xdev,
 	    at_timestamp_ns,                                   //
 	    out_value,                                         //
 	    out_timestamp_ns);                                 //
-	IPC_CHK_ONLY_PRINT(icd->ipc_c, xret, "ipc_call_device_get_hand_tracking");
+	IPC_CHK_ALWAYS_RET(icd->ipc_c, xret, "ipc_call_device_get_hand_tracking");
 }
 
 static xrt_result_t
@@ -180,13 +180,13 @@ ipc_client_device_get_view_poses(struct xrt_device *xdev,
 	assert(false);
 }
 
-static void
+static xrt_result_t
 ipc_client_device_set_output(struct xrt_device *xdev, enum xrt_output_name name, const union xrt_output_value *value)
 {
 	ipc_client_device_t *icd = ipc_client_device(xdev);
 
 	xrt_result_t xret = ipc_call_device_set_output(icd->ipc_c, icd->device_id, name, value);
-	IPC_CHK_ONLY_PRINT(icd->ipc_c, xret, "ipc_call_device_set_output");
+	IPC_CHK_ALWAYS_RET(icd->ipc_c, xret, "ipc_call_device_set_output");
 }
 
 static xrt_result_t

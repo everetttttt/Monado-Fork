@@ -482,7 +482,7 @@ hydra_device_update_inputs(struct xrt_device *xdev)
 	return XRT_SUCCESS;
 }
 
-static void
+static xrt_result_t
 hydra_device_get_tracked_pose(struct xrt_device *xdev,
                               enum xrt_input_name name,
                               int64_t at_timestamp_ns,
@@ -505,6 +505,8 @@ hydra_device_get_tracked_pose(struct xrt_device *xdev,
 	// HYDRA_SPEW(hd, "GET_TRACKED_POSE (%f, %f, %f) (%f, %f, %f, %f) ",
 	// pos.x,
 	//            pos.y, pos.z, quat.x, quat.y, quat.z, quat.w);
+
+	return XRT_SUCCESS;
 }
 
 static void
@@ -624,7 +626,7 @@ hydra_found(struct xrt_prober *xp,
 		hd->base.destroy = hydra_device_destroy;
 		hd->base.update_inputs = hydra_device_update_inputs;
 		hd->base.get_tracked_pose = hydra_device_get_tracked_pose;
-		// hs->base.set_output = hydra_device_set_output;
+		hd->base.set_output = u_device_ni_set_output;
 		hd->base.name = XRT_DEVICE_HYDRA;
 		snprintf(hd->base.str, XRT_DEVICE_NAME_LEN, "%s %i", "Razer Hydra Controller", (int)(i + 1));
 		snprintf(hd->base.serial, XRT_DEVICE_NAME_LEN, "%s %i", "Razer Hydra Controller", (int)(i + 1));

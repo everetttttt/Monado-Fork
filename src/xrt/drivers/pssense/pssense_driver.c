@@ -676,7 +676,7 @@ pssense_device_update_inputs(struct xrt_device *xdev)
 	return XRT_SUCCESS;
 }
 
-static void
+static xrt_result_t
 pssense_set_output(struct xrt_device *xdev, enum xrt_output_name name, const union xrt_output_value *value)
 {
 	struct pssense_device *pssense = (struct pssense_device *)xdev;
@@ -710,8 +710,8 @@ pssense_set_output(struct xrt_device *xdev, enum xrt_output_name name, const uni
 			}
 		}
 	} else {
-		PSSENSE_ERROR(pssense, "Unknown output name requested %u", name);
-		return;
+		U_LOG_XDEV_UNSUPPORTED_OUTPUT(&pssense->base, pssense->log_level, name);
+		return XRT_ERROR_OUTPUT_UNSUPPORTED;
 	}
 
 	os_mutex_lock(&pssense->lock);
@@ -730,6 +730,8 @@ pssense_set_output(struct xrt_device *xdev, enum xrt_output_name name, const uni
 		pssense_send_output_report_locked(pssense);
 	}
 	os_mutex_unlock(&pssense->lock);
+
+	return XRT_SUCCESS;
 }
 
 static void
@@ -757,7 +759,7 @@ pssense_get_fusion_pose(struct pssense_device *pssense,
 	    XRT_SPACE_RELATION_ANGULAR_VELOCITY_VALID_BIT | XRT_SPACE_RELATION_LINEAR_VELOCITY_VALID_BIT);
 }
 
-static void
+static xrt_result_t
 pssense_get_tracked_pose(struct xrt_device *xdev,
                          enum xrt_input_name name,
                          int64_t at_timestamp_ns,
@@ -766,8 +768,8 @@ pssense_get_tracked_pose(struct xrt_device *xdev,
 	struct pssense_device *pssense = (struct pssense_device *)xdev;
 
 	if (name != XRT_INPUT_PSSENSE_AIM_POSE && name != XRT_INPUT_PSSENSE_GRIP_POSE) {
-		PSSENSE_ERROR(pssense, "Unknown pose name requested %u", name);
-		return;
+		U_LOG_XDEV_UNSUPPORTED_INPUT(&pssense->base, pssense->log_level, name);
+		return XRT_ERROR_INPUT_UNSUPPORTED;
 	}
 
 	struct xrt_relation_chain xrc = {0};
@@ -785,6 +787,8 @@ pssense_get_tracked_pose(struct xrt_device *xdev,
 	os_mutex_unlock(&pssense->lock);
 
 	m_relation_chain_resolve(&xrc, out_relation);
+
+	return XRT_SUCCESS;
 }
 
 static xrt_result_t
