@@ -364,7 +364,7 @@ vive_controller_device_index_update_inputs(struct xrt_device *xdev)
 	return XRT_SUCCESS;
 }
 
-static void
+static xrt_result_t
 vive_controller_get_hand_tracking(struct xrt_device *xdev,
                                   enum xrt_input_name name,
                                   int64_t requested_timestamp_ns,
@@ -376,8 +376,8 @@ vive_controller_get_hand_tracking(struct xrt_device *xdev,
 	struct vive_controller_device *d = vive_controller_device(xdev);
 
 	if (name != XRT_INPUT_GENERIC_HAND_TRACKING_LEFT && name != XRT_INPUT_GENERIC_HAND_TRACKING_RIGHT) {
-		VIVE_ERROR(d, "unknown input name for hand tracker");
-		return;
+		U_LOG_XDEV_UNSUPPORTED_INPUT(&d->base, d->log_level, name);
+		return XRT_ERROR_INPUT_UNSUPPORTED;
 	}
 
 	enum xrt_hand hand = d->config.variant == CONTROLLER_INDEX_LEFT ? XRT_HAND_LEFT : XRT_HAND_RIGHT;
@@ -408,9 +408,10 @@ vive_controller_get_hand_tracking(struct xrt_device *xdev,
 	*out_timestamp_ns = requested_timestamp_ns;
 
 	out_value->is_active = true;
+	return XRT_SUCCESS;
 }
 
-static void
+static xrt_result_t
 vive_controller_device_get_tracked_pose(struct xrt_device *xdev,
                                         enum xrt_input_name name,
                                         int64_t at_timestamp_ns,
@@ -421,11 +422,13 @@ vive_controller_device_get_tracked_pose(struct xrt_device *xdev,
 	// U_LOG_D("input name %d %d", name, XRT_INPUT_VIVE_GRIP_POSE);
 	if (name != XRT_INPUT_VIVE_AIM_POSE && name != XRT_INPUT_VIVE_GRIP_POSE && name != XRT_INPUT_INDEX_AIM_POSE &&
 	    name != XRT_INPUT_INDEX_GRIP_POSE) {
-		VIVE_ERROR(d, "unknown input name");
-		return;
+		U_LOG_XDEV_UNSUPPORTED_INPUT(&d->base, d->log_level, name);
+		return XRT_ERROR_INPUT_UNSUPPORTED;
 	}
 
 	get_pose(d, name, at_timestamp_ns, out_relation);
+
+	return XRT_SUCCESS;
 }
 
 static int

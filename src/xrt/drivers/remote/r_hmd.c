@@ -56,7 +56,7 @@ r_hmd_destroy(struct xrt_device *xdev)
 	u_device_free(&rh->base);
 }
 
-static void
+static xrt_result_t
 r_hmd_get_tracked_pose(struct xrt_device *xdev,
                        enum xrt_input_name name,
                        int64_t at_timestamp_ns,
@@ -66,19 +66,12 @@ r_hmd_get_tracked_pose(struct xrt_device *xdev,
 
 	switch (name) {
 	case XRT_INPUT_GENERIC_HEAD_POSE: copy_head_center_to_relation(rh, out_relation); break;
-	default: U_LOG_E("Unknown input name"); break;
+	default:
+		U_LOG_XDEV_UNSUPPORTED_INPUT(&rh->base, u_log_get_global_level(), name);
+		return XRT_ERROR_INPUT_UNSUPPORTED;
 	}
-}
 
-static void
-r_hmd_get_hand_tracking(struct xrt_device *xdev,
-                        enum xrt_input_name name,
-                        int64_t at_timestamp_ns,
-                        struct xrt_hand_joint_set *out_value,
-                        int64_t *out_timestamp_ns)
-{
-	struct r_hmd *rh = r_hmd(xdev);
-	(void)rh;
+	return XRT_SUCCESS;
 }
 
 static void
@@ -141,7 +134,7 @@ r_hmd_create(struct r_hub *r)
 	// Setup the basics.
 	rh->base.update_inputs = u_device_noop_update_inputs;
 	rh->base.get_tracked_pose = r_hmd_get_tracked_pose;
-	rh->base.get_hand_tracking = r_hmd_get_hand_tracking;
+	rh->base.get_hand_tracking = u_device_ni_get_hand_tracking;
 	rh->base.get_view_poses = r_hmd_get_view_poses;
 	rh->base.set_output = r_hmd_set_output;
 	rh->base.destroy = r_hmd_destroy;

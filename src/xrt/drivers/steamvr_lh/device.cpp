@@ -185,9 +185,10 @@ ControllerDevice::ControllerDevice(vr::PropertyContainerHandle_t handle, const D
 	this->device_type = XRT_DEVICE_TYPE_UNKNOWN;
 	this->container_handle = handle;
 
+	this->xrt_device::get_hand_tracking =
+	    &device_bouncer<ControllerDevice, &ControllerDevice::get_hand_tracking, xrt_result_t>;
 #define SETUP_MEMBER_FUNC(name) this->xrt_device::name = &device_bouncer<ControllerDevice, &ControllerDevice::name>
 	SETUP_MEMBER_FUNC(set_output);
-	SETUP_MEMBER_FUNC(get_hand_tracking);
 #undef SETUP_MEMBER_FUNC
 }
 
@@ -397,18 +398,19 @@ ControllerDevice::get_finger_from_name(const std::string_view name)
 	return finger->second;
 }
 
-void
+xrt_result_t
 ControllerDevice::get_hand_tracking(enum xrt_input_name name,
                                     int64_t desired_timestamp_ns,
                                     struct xrt_hand_joint_set *out_value,
                                     int64_t *out_timestamp_ns)
 {
 	if (!has_index_hand_tracking)
-		return;
+		return XRT_ERROR_NOT_IMPLEMENTED;
 	update_hand_tracking(desired_timestamp_ns, out_value);
 	out_value->is_active = true;
 	hand_tracking_timestamp = desired_timestamp_ns;
 	*out_timestamp_ns = hand_tracking_timestamp;
+	return XRT_SUCCESS;
 }
 
 void
@@ -426,16 +428,18 @@ Device::get_battery_status(bool *out_present, bool *out_charging, float *out_cha
 	return XRT_SUCCESS;
 }
 
-void
+xrt_result_t
 HmdDevice::get_tracked_pose(xrt_input_name name, uint64_t at_timestamp_ns, xrt_space_relation *out_relation)
 {
 	switch (name) {
 	case XRT_INPUT_GENERIC_HEAD_POSE: Device::get_pose(at_timestamp_ns, out_relation); break;
-	default: U_LOG_W("steamvr_lh hmd: Requested pose for unknown name %u", name); break;
+	default: U_LOG_XDEV_UNSUPPORTED_INPUT(this, ctx->log_level, name); return XRT_ERROR_INPUT_UNSUPPORTED;
 	}
+
+	return XRT_SUCCESS;
 }
 
-void
+xrt_result_t
 ControllerDevice::get_tracked_pose(xrt_input_name name, uint64_t at_timestamp_ns, xrt_space_relation *out_relation)
 {
 	xrt_space_relation rel = {};
@@ -453,6 +457,8 @@ ControllerDevice::get_tracked_pose(xrt_input_name name, uint64_t at_timestamp_ns
 	struct xrt_pose *p = &out_relation->pose;
 	DEV_DEBUG("controller %u: GET_POSITION (%f %f %f) GET_ORIENTATION (%f, %f, %f, %f)", name, p->position.x,
 	          p->position.y, p->position.z, p->orientation.x, p->orientation.y, p->orientation.z, p->orientation.w);
+
+	return XRT_SUCCESS;
 }
 
 void
