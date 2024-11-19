@@ -23,6 +23,16 @@ struct xrt_tracking;
 
 #define XRT_DEVICE_NAME_LEN 256
 
+#ifdef NDEBUG
+#define XRT_ASSERT_NOT_NULL_OR_RETURN_NOT_IMPLEMENTED(VAL)                                                             \
+	do {                                                                                                           \
+		if (VAL == NULL) {                                                                                     \
+			return XRT_ERROR_NOT_IMPLEMENTED;                                                              \
+		}                                                                                                      \
+	} while (0)
+#else
+#define XRT_ASSERT_NOT_NULL_OR_RETURN_NOT_IMPLEMENTED(VAL) assert(S->M != NULL)
+#endif
 
 /*!
  * A per-lens/display view information.
@@ -564,6 +574,7 @@ struct xrt_device
 static inline xrt_result_t
 xrt_device_update_inputs(struct xrt_device *xdev)
 {
+	XRT_ASSERT_NOT_NULL_OR_RETURN_NOT_IMPLEMENTED(xdev->update_inputs);
 	return xdev->update_inputs(xdev);
 }
 
@@ -613,6 +624,7 @@ xrt_device_get_face_tracking(struct xrt_device *xdev,
                              int64_t at_timestamp_ns,
                              struct xrt_facial_expression_set *out_value)
 {
+	XRT_ASSERT_NOT_NULL_OR_RETURN_NOT_IMPLEMENTED(xdev->get_face_tracking);
 	return xdev->get_face_tracking(xdev, facial_expression_type, at_timestamp_ns, out_value);
 }
 
@@ -628,9 +640,7 @@ xrt_device_get_body_skeleton(struct xrt_device *xdev,
                              enum xrt_input_name body_tracking_type,
                              struct xrt_body_skeleton *out_value)
 {
-	if (xdev->get_body_skeleton == NULL) {
-		return XRT_ERROR_NOT_IMPLEMENTED;
-	}
+	XRT_ASSERT_NOT_NULL_OR_RETURN_NOT_IMPLEMENTED(xdev->get_body_skeleton);
 	return xdev->get_body_skeleton(xdev, body_tracking_type, out_value);
 }
 
@@ -647,9 +657,7 @@ xrt_device_get_body_joints(struct xrt_device *xdev,
                            int64_t desired_timestamp_ns,
                            struct xrt_body_joint_set *out_value)
 {
-	if (xdev->get_body_joints == NULL) {
-		return XRT_ERROR_NOT_IMPLEMENTED;
-	}
+	XRT_ASSERT_NOT_NULL_OR_RETURN_NOT_IMPLEMENTED(xdev->get_body_joints);
 	return xdev->get_body_joints(xdev, body_tracking_type, desired_timestamp_ns, out_value);
 }
 
@@ -712,9 +720,7 @@ xrt_device_get_visibility_mask(struct xrt_device *xdev,
                                uint32_t view_index,
                                struct xrt_visibility_mask **out_mask)
 {
-	if (xdev->get_visibility_mask == NULL) {
-		return XRT_ERROR_NOT_IMPLEMENTED;
-	}
+	XRT_ASSERT_NOT_NULL_OR_RETURN_NOT_IMPLEMENTED(xdev->get_visibility_mask);
 	return xdev->get_visibility_mask(xdev, type, view_index, out_mask);
 }
 
@@ -731,6 +737,7 @@ xrt_device_ref_space_usage(struct xrt_device *xdev,
                            enum xrt_input_name name,
                            bool used)
 {
+	XRT_ASSERT_NOT_NULL_OR_RETURN_NOT_IMPLEMENTED(xdev->ref_space_usage);
 	return xdev->ref_space_usage(xdev, type, name, used);
 }
 
@@ -757,9 +764,7 @@ xrt_device_is_form_factor_available(struct xrt_device *xdev, enum xrt_form_facto
 static inline xrt_result_t
 xrt_device_get_battery_status(struct xrt_device *xdev, bool *out_present, bool *out_charging, float *out_charge)
 {
-	if (xdev->get_battery_status == NULL) {
-		return XRT_ERROR_NOT_IMPLEMENTED;
-	}
+	XRT_ASSERT_NOT_NULL_OR_RETURN_NOT_IMPLEMENTED(xdev->get_battery_status);
 	return xdev->get_battery_status(xdev, out_present, out_charging, out_charge);
 }
 
@@ -773,9 +778,7 @@ xrt_device_get_battery_status(struct xrt_device *xdev, bool *out_present, bool *
 static inline xrt_result_t
 xrt_device_begin_feature(struct xrt_device *xdev, enum xrt_device_feature_type type)
 {
-	if (xdev->begin_feature == NULL) {
-		return XRT_ERROR_NOT_IMPLEMENTED;
-	}
+	XRT_ASSERT_NOT_NULL_OR_RETURN_NOT_IMPLEMENTED(xdev->begin_feature);
 	return xdev->begin_feature(xdev, type);
 }
 
@@ -789,9 +792,7 @@ xrt_device_begin_feature(struct xrt_device *xdev, enum xrt_device_feature_type t
 static inline xrt_result_t
 xrt_device_end_feature(struct xrt_device *xdev, enum xrt_device_feature_type type)
 {
-	if (xdev->end_feature == NULL) {
-		return XRT_ERROR_NOT_IMPLEMENTED;
-	}
+	XRT_ASSERT_NOT_NULL_OR_RETURN_NOT_IMPLEMENTED(xdev->end_feature);
 	return xdev->end_feature(xdev, type);
 }
 
