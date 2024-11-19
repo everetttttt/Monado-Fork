@@ -1,3 +1,7 @@
+# A non-authorative mirror of Monado, the open source OpenXR runtime.
+The authorative repository can be found here: <https://gitlab.freedesktop.org/monado/monado>
+This repository is simply a mirror to GitHub, last updated 19 November 2024.
+
 # Monado - XR Runtime (XRT)
 
 <!--
