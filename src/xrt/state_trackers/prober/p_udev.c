@@ -378,6 +378,7 @@ p_udev_enumerate_hidraw(struct prober *p, struct udev *udev)
 
 	enumerate = udev_enumerate_new(udev);
 	udev_enumerate_add_match_subsystem(enumerate, "hidraw");
+	udev_enumerate_add_match_property(enumerate, "ID_xrhardware", "1");
 	udev_enumerate_scan_devices(enumerate);
 
 	devices = udev_enumerate_get_list_entry(enumerate);
@@ -428,19 +429,21 @@ p_udev_enumerate_hidraw(struct prober *p, struct udev *udev)
 		default: P_ERROR(p, "Unknown hidraw bus_type: '%i', ignoring.", bus_type); goto next;
 		}
 
-		// HID interface.
-		ret = p_udev_get_interface_number(raw_dev, &interface);
-		if (ret != 0) {
-			P_ERROR(p,
-			        "In enumerating hidraw devices: "
-			        "Failed to get interface number for '%s'",
-			        sysfs_path);
-			goto next;
-		}
-
 		if (bus_type == HIDRAW_BUS_BLUETOOTH) {
+			// Bluetooth HID devices shouldn't have a USB interface, use 0.
+			interface = 0;
 			ret = p_dev_get_bluetooth_dev(p, bluetooth_id, vendor_id, product_id, product_name, &pdev);
 		} else if (bus_type == HIDRAW_BUS_USB) {
+			// USB HID interface.
+			ret = p_udev_get_interface_number(raw_dev, &interface);
+			if (ret != 0) {
+				P_ERROR(p,
+				        "In enumerating hidraw devices: "
+				        "Failed to get interface number for '%s'",
+				        sysfs_path);
+				goto next;
+			}
+
 			ret = p_dev_get_usb_dev(p, usb_bus, usb_addr, vendor_id, product_id, &pdev);
 		} else {
 			// Right now only support USB & Bluetooth devices.
